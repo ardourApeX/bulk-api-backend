@@ -7,7 +7,7 @@ const { intitalizeDBConnection } = require("./database/db.connect");
 const { mailRoute } = require("./routes/mail");
 const { validationRoute } = require("./routes/validation");
 // const formidable = require("express-formidable");
-// app.use(formidable());	
+// app.use(formidable());
 // var multer = require('multer');
 // var upload = multer();
 app.use(
@@ -17,10 +17,10 @@ app.use(
 );
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-// app.use(upload.array()); 
-app.use(express.static('public'));
+// app.use(upload.array());
+app.use(express.static("public"));
 
-const PORT = 3000;
+const PORT = 3001;
 
 //Connecting to database
 intitalizeDBConnection();
