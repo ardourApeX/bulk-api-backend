@@ -1,73 +1,64 @@
 const express = require("express");
 const mailRoute = express.Router();
-var multer = require("multer");
-var upload = multer();
 const { uploadFileToAWS } = require("../helpers/uploadFileToAWS");
-var type = upload.single("image");
 const { saveCredentials } = require("../helpers/saveCredentials");
+const formidable = require("formidable");
+const { sendEmail } = require("../helpers/sendMail");
 const { saveContent } = require("../helpers/saveContent");
-
-mailRoute.post("/", type, async function (request, response) {
-	var {
-		_id,
-		email: from,
-		clientId,
-		clientSecret,
-		refreshToken,
-		recieverEmail,
-		subject,
-		description,
-	} = request.body;
-
-	if (_id === undefined) {
-		//If the sender email is not in db, save it first
-		var functionResponse = await saveCredentials(
-			from,
-			clientId,
-			clientSecret,
-			refreshToken
-		);
-		if (!functionResponse.success) {
-			//If there is a duplicacy or some ISE then send control back to FE
-			response.status(500).send({ error: functionResponse.message });
-		} else {
-			_id = functionResponse._id;
+mailRoute.post("/", async function (request, response) {
+	let form = new formidable.IncomingForm();
+	console.log(process.env.ACCESS_KEY);
+	console.log(process.env.AWS_SECRET);
+	console.log(process.env.REGION);
+	form.parse(request, async (formErr, fields, file) => {
+		if (formErr) {
+			return response
+				.status(400)
+				.json({ error: true, message: "Something went wrong!", err });
 		}
-	}
-	// Now save mail content to schema
+		try {
+			const {
+				senderEmail,
+				clientId,
+				clientSecret,
+				refreshToken,
+				subject,
+				receiverEmail,
+				body,
+				bcc,
+			} = fields;
+			let filePaths = [];
+			let files = Object.keys(file);
+			let slicedRecievers = receiverEmail.split("\n");
 
-	// First upload the doc to aws
-	var awsResponse = {};
+			for (let eachFile in files) {
+				const { path } = await uploadFileToAWS(file[files[eachFile]]);
+				path && filePaths.push({ fileName: files[eachFile], path });
+			}
 
-	try {
-		const image = request.file;
-		const base64data = Buffer.from(image.buffer, "binary");
-		awsResponse = await uploadFileToAWS(image.originalname, base64data);
-		console.log(awsResponse);
-	} catch (error) {
-		response
-			.status(500)
-			.send({ success: false, message: "Error while uploading to AWS" });
-	}
-	// Manual slicing needed : DONOT DELETE
-	let slicedRecievers = recieverEmail.split("\n");
-	const respo = await saveContent({
-		senderId: _id,
-		subject,
-		imagePath: awsResponse.path,
-		description,
-		recieverEmail: slicedRecievers.slice(0, slicedRecievers.length - 1),
+			sendEmail(
+				senderEmail,
+				clientId,
+				clientSecret,
+				refreshToken,
+				subject,
+				slicedRecievers,
+				body,
+				bcc.split(","),
+				filePaths
+			);
+		} catch (error) {
+			console.log(error.message);
+		}
 	});
-	// sendEmail(
-	// 	from,
-	// 	clientId,
-	// 	clientSecret,
-	// 	refreshToken,
-	// 	recieverEmail.split("\n"), //Splitting all the mails
+
+	// Manual slicing needed : DONOT DELETE
+	// const respo = await saveContent({
+	// 	senderId: _id,
 	// 	subject,
+	// 	imagePath: awsResponse.path,
 	// 	description,
-	// 	mailId,
-	// 	image
-	// );
+	// 	recieverEmail: slicedRecievers.slice(0, slicedRecievers.length - 1),
+	// });
 });
 module.exports = { mailRoute };

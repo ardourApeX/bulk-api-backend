@@ -1,20 +1,23 @@
+// Dependencies
 const express = require("express");
 const app = express();
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const cors = require("cors");
+
+// Connection
 const { intitalizeDBConnection } = require("./database/db.connect");
+
+// Controllers
 const { mailRoute } = require("./routes/mail");
 const { validationRoute } = require("./routes/validation");
-// const formidable = require("express-formidable");
-// app.use(formidable());
-// var multer = require('multer');
-// var upload = multer();
+
 app.use(
 	cors({
 		origin: "*",
 	})
 );
+
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 // app.use(upload.array());
@@ -28,10 +31,12 @@ intitalizeDBConnection();
 app.get("/", function (request, response) {
 	response.status(200).send({ status: true, message: "Made get request" });
 });
-
-app.use("/send-mail", mailRoute);
+app.use("/mail", mailRoute);
 app.use("/validation", validationRoute);
-
+app.use("/testing", function testing(req, res) {
+	console.log(req.files);
+	res.status(200).send({ success: true });
+});
 app.listen(PORT, () => {
 	console.log("SERVER Started at ", PORT);
 });
