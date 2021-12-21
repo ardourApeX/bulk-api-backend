@@ -1,10 +1,8 @@
 const express = require("express");
 const mailRoute = express.Router();
 const { uploadFileToAWS } = require("../helpers/uploadFileToAWS");
-const { saveCredentials } = require("../helpers/saveCredentials");
 const formidable = require("formidable");
 const { sendEmail } = require("../helpers/sendMail");
-const { saveContent } = require("../helpers/saveContent");
 mailRoute.post("/", async function (request, response) {
 	let form = new formidable.IncomingForm();
 

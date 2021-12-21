@@ -73,7 +73,7 @@ async function sendEmail({
 		});
 	}
 
-	 sendingBulkMail();
+	sendingBulkMail();
 }
 
 module.exports = { sendEmail };
