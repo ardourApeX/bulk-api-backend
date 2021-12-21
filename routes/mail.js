@@ -7,9 +7,7 @@ const { sendEmail } = require("../helpers/sendMail");
 const { saveContent } = require("../helpers/saveContent");
 mailRoute.post("/", async function (request, response) {
 	let form = new formidable.IncomingForm();
-	console.log(process.env.ACCESS_KEY);
-	console.log(process.env.AWS_SECRET);
-	console.log(process.env.REGION);
+
 	form.parse(request, async (formErr, fields, file) => {
 		if (formErr) {
 			return response
@@ -29,36 +27,31 @@ mailRoute.post("/", async function (request, response) {
 			} = fields;
 			let filePaths = [];
 			let files = Object.keys(file);
-			let slicedRecievers = receiverEmail.split("\n");
-
+			let slicedReceivers = receiverEmail.split(",");
 			for (let eachFile in files) {
 				const { path } = await uploadFileToAWS(file[files[eachFile]]);
 				path && filePaths.push({ fileName: files[eachFile], path });
 			}
-
-			sendEmail(
+			const temp = await sendEmail({
 				senderEmail,
 				clientId,
 				clientSecret,
 				refreshToken,
 				subject,
-				slicedRecievers,
+				slicedReceivers,
 				body,
-				bcc.split(","),
-				filePaths
-			);
+				bcc: bcc.split("\n"),
+				filePaths,
+			});
+			console.log("sending back response");
+			return response
+				.status(temp.status)
+				.send({ success: temp.success, message: temp.message });
 		} catch (error) {
-			console.log(error.message);
+			return response
+				.status(400)
+				.send({ success: false, message: error.message });
 		}
 	});
-
-	// Manual slicing needed : DONOT DELETE
-	// const respo = await saveContent({
-	// 	senderId: _id,
-	// 	subject,
-	// 	imagePath: awsResponse.path,
-	// 	description,
-	// 	recieverEmail: slicedRecievers.slice(0, slicedRecievers.length - 1),
-	// });
 });
 module.exports = { mailRoute };

@@ -1,57 +1,51 @@
 const nodemailer = require("nodemailer");
 const { google } = require("googleapis");
-const { s3bucket } = require("../config/s3");
-const { MailBody } = require("../models/mail.body.model");
-const { Mail } = require("../models/mail.model");
+const e = require("express");
 const OAuth2 = google.auth.OAuth2;
-const mongoose = require("mongoose");
 
-function sendEmail(
-	email,
+async function sendEmail({
+	senderEmail,
 	clientId,
 	clientSecret,
 	refreshToken,
 	subject,
-	receivers,
-	description,
+	slicedReceivers: receivers,
+	body: description,
 	bcc,
-	filePaths
-) {
-	try {
-		const oauth2Client = new OAuth2(
-			clientId, // ClientID
-			clientSecret, // Client Secret
-			"https://developers.google.com/oauthplayground" // Redirect URL
-		);
-		oauth2Client.setCredentials({
-			refresh_token: refreshToken,
-		});
-		const accessToken = oauth2Client.getAccessToken();
-		const smtpTransport = nodemailer.createTransport({
-			service: "gmail",
-			auth: {
-				type: "OAuth2",
-				user: email,
-				clientId: clientId,
-				clientSecret: clientSecret,
-				refreshToken: refreshToken,
-				accessToken: accessToken,
-			},
-		});
-	} catch (error) {
-		console.log("error aagu", error.message);
-	}
+	filePaths,
+}) {
+	const oauth2Client = new OAuth2(
+		clientId, // ClientID
+		clientSecret, // Client Secret
+		"https://developers.google.com/oauthplayground" // Redirect URL
+	);
+	oauth2Client.setCredentials({
+		refresh_token: refreshToken,
+	});
+	const accessToken = oauth2Client.getAccessToken();
+	var smtpTransport = await nodemailer.createTransport({
+		service: "gmail",
+		auth: {
+			type: "OAuth2",
+			user: senderEmail,
+			clientId: clientId,
+			clientSecret: clientSecret,
+			refreshToken: refreshToken,
+			accessToken: accessToken,
+		},
+	});
+
 	const totalRecievers = bcc.length;
-	console.log(totalRecievers);
 
 	var i = 0;
+	let completed = false;
 	function sendingBulkMail() {
-		try {
+		return new Promise((resolve, reject) => {
 			setTimeout(function () {
 				const sendersList = bcc.slice(i, i + 495);
 				const mailOptions = {
 					to: receivers,
-					from: email,
+					from: senderEmail,
 					bcc: sendersList,
 					subject: subject,
 					html: description,
@@ -59,8 +53,9 @@ function sendEmail(
 				};
 				smtpTransport.sendMail(mailOptions, function (err) {
 					if (err) {
-						console.log("error");
+						console.log("Error occured while sending mails");
 						console.log(err.message);
+						reject({ success: false, message: err.message, status: 400 });
 					} else {
 						console.log("Mail done");
 					}
@@ -69,19 +64,16 @@ function sendEmail(
 				i += 496;
 				if (i < totalRecievers) {
 					sendingBulkMail();
+				} else {
+					completed = true;
+					console.log("completed ", completed);
+					resolve({ success: true, message: "all mails done", status: 200 });
 				}
 			}, 20000);
-		} catch (error) {
-			console.log("error generated ", error.message);
-		}
-	}
-	try {
-		sendingBulkMail();
-	} catch (error) {
-		console.log(error.message);
+		});
 	}
 
-	return;
+	 sendingBulkMail();
 }
 
 module.exports = { sendEmail };
