@@ -6,7 +6,7 @@ const cors = require("cors");
 
 // Controllers
 const { mailRoute } = require("./routes/mail");
-
+const { messageRoute } = require("./routes/messages");
 app.use(
 	cors({
 		origin: "*",
@@ -22,6 +22,7 @@ app.get("/", function (request, response) {
 	response.status(200).send({ status: true, message: "Made get request" });
 });
 app.use("/mail", mailRoute);
+app.use("/message", messageRoute);
 app.use("/testing", function testing(req, res) {
 	console.log(req.files);
 	res.status(200).send({ success: true });
